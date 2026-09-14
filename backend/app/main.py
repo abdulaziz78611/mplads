@@ -60,42 +60,49 @@ Db = Annotated[Session, Depends(get_db)]
 
 @app.on_event("startup")
 def initialise_app() -> None:
-    upgrade_database_schema(engine)
-    with SessionLocal() as db:
-        ensure_default_contractor(db)
-        # Check if synthetic demo data exists
-        if not db.query(Project).filter(Project.data_source == "synthetic").first():
-            seed_demo_data(db)
+    try:
+        upgrade_database_schema(engine)
+    except Exception as e:
+        print(f"Warning during upgrade_database_schema: {e}")
 
-        # Check if official data exists; auto-seed from data/official if absent
-        if not db.query(Project).filter(Project.data_source == "official").first():
-            candidate_paths = [
-                os.path.join(os.path.dirname(__file__), "..", "..", "data", "official", "mplads_official_sample.csv"),
-                os.path.join(os.path.dirname(__file__), "..", "data", "official", "mplads_official_sample.csv"),
-                os.path.join(os.path.dirname(__file__), "data", "official", "mplads_official_sample.csv"),
-                os.path.join(os.getcwd(), "data", "official", "mplads_official_sample.csv"),
-                os.path.join(os.getcwd(), "backend", "data", "official", "mplads_official_sample.csv"),
-            ]
-            official_csv = next((p for p in candidate_paths if os.path.exists(p)), None)
-            if official_csv:
-                with open(official_csv, "rb") as f:
-                    recs = parse_csv_content(f.read())
-                ingest_records(
-                    db,
-                    recs,
-                    source_name="Official Data Pipeline — Schema Validation Dataset",
-                    file_name="mplads_official_sample.csv",
-                    data_source="official",
-                )
-                run_anomaly_analysis(db, data_source="official")
+    try:
+        with SessionLocal() as db:
+            ensure_default_contractor(db)
+            # Check if synthetic demo data exists
+            if not db.query(Project).filter(Project.data_source == "synthetic").first():
+                seed_demo_data(db)
 
-        if not db.query(Investigation).first():
-            db.add_all([
-                Investigation(project_id="MPLAD-DEMO-00421", officer="Aditi Sharma", status="Under Review", remarks="Field inspection scheduled to cross-check water pipe network augmentation and payment milestone dates against sanction letter."),
-                Investigation(project_id="MPLAD-DEMO-00422", officer="Aditi Sharma", status="Open", remarks="Proximity alert flagged against MPLAD-DEMO-00421. Comparing technical project drawings and DPR files."),
-                Investigation(project_id="MPLAD-00001", officer="Rajesh Kumar", status="Verification Requested", remarks="Contractor allocation and expenditure ratio audit requested from district division."),
-            ])
-            db.commit()
+            # Check if official data exists; auto-seed from data/official if absent
+            if not db.query(Project).filter(Project.data_source == "official").first():
+                candidate_paths = [
+                    os.path.join(os.path.dirname(__file__), "..", "..", "data", "official", "mplads_official_sample.csv"),
+                    os.path.join(os.path.dirname(__file__), "..", "data", "official", "mplads_official_sample.csv"),
+                    os.path.join(os.path.dirname(__file__), "data", "official", "mplads_official_sample.csv"),
+                    os.path.join(os.getcwd(), "data", "official", "mplads_official_sample.csv"),
+                    os.path.join(os.getcwd(), "backend", "data", "official", "mplads_official_sample.csv"),
+                ]
+                official_csv = next((p for p in candidate_paths if os.path.exists(p)), None)
+                if official_csv:
+                    with open(official_csv, "rb") as f:
+                        recs = parse_csv_content(f.read())
+                    ingest_records(
+                        db,
+                        recs,
+                        source_name="Official Data Pipeline — Schema Validation Dataset",
+                        file_name="mplads_official_sample.csv",
+                        data_source="official",
+                    )
+                    run_anomaly_analysis(db, data_source="official")
+
+            if not db.query(Investigation).first():
+                db.add_all([
+                    Investigation(project_id="MPLAD-DEMO-00421", officer="Aditi Sharma", status="Under Review", remarks="Field inspection scheduled to cross-check water pipe network augmentation and payment milestone dates against sanction letter."),
+                    Investigation(project_id="MPLAD-DEMO-00422", officer="Aditi Sharma", status="Open", remarks="Proximity alert flagged against MPLAD-DEMO-00421. Comparing technical project drawings and DPR files."),
+                    Investigation(project_id="MPLAD-00001", officer="Rajesh Kumar", status="Verification Requested", remarks="Contractor allocation and expenditure ratio audit requested from district division."),
+                ])
+                db.commit()
+    except Exception as e:
+        print(f"Warning during initialise_app: {e}")
 
 
 def _project_json(p: Project, include_financials: bool = False) -> dict:
@@ -168,9 +175,12 @@ def _get_project_or_404(db: Session, project_id: str) -> Project:
     return project
 
 
+@app.get("/")
 @app.get("/health")
+@app.get("/api/health")
 def health() -> dict:
     return {"status": "ok", "service": "mplad-sentinel-api", "version": "2.0.0"}
+
 
 
 @app.post("/api/auth/login")

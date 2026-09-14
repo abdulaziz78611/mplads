@@ -23,6 +23,7 @@ wheels/
 venv/
 ENV/
 *.db
+!backend/data/seed_mplad.db
 *.sqlite3
 
 # Node / Vite

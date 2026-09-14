@@ -6,7 +6,12 @@
     },
     "backend": {
       "root": "backend",
-      "entrypoint": "main.py"
+      "entrypoint": "main.py",
+      "functions": {
+        "**/*.py": {
+          "maxDuration": 60
+        }
+      }
     }
   },
   "rewrites": [
