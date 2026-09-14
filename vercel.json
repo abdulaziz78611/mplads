@@ -16,32 +16,24 @@
   },
   "rewrites": [
     {
-      "source": "/api(/.*)?",
+      "source": "/api/(.*)",
       "destination": {
         "type": "service",
         "service": "backend"
       }
     },
     {
-      "source": "/assets/(.*)",
+      "source": "/api",
       "destination": {
         "type": "service",
-        "service": "frontend"
-      }
-    },
-    {
-      "source": "/(.*\\.(?:js|css|ico|svg|png|jpg|jpeg|gif|webp|woff|woff2|ttf|eot|json|map))",
-      "destination": {
-        "type": "service",
-        "service": "frontend"
+        "service": "backend"
       }
     },
     {
       "source": "/(.*)",
       "destination": {
         "type": "service",
-        "service": "frontend",
-        "path": "/index.html"
+        "service": "frontend"
       }
     }
   ]
