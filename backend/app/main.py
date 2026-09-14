@@ -49,7 +49,7 @@ app.add_middleware(
         "http://localhost:4173",
         "http://127.0.0.1:4173",
     ],
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|.*\.vercel\.app)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -69,8 +69,15 @@ def initialise_app() -> None:
 
         # Check if official data exists; auto-seed from data/official if absent
         if not db.query(Project).filter(Project.data_source == "official").first():
-            official_csv = os.path.join(os.path.dirname(__file__), "..", "..", "data", "official", "mplads_official_sample.csv")
-            if os.path.exists(official_csv):
+            candidate_paths = [
+                os.path.join(os.path.dirname(__file__), "..", "..", "data", "official", "mplads_official_sample.csv"),
+                os.path.join(os.path.dirname(__file__), "..", "data", "official", "mplads_official_sample.csv"),
+                os.path.join(os.path.dirname(__file__), "data", "official", "mplads_official_sample.csv"),
+                os.path.join(os.getcwd(), "data", "official", "mplads_official_sample.csv"),
+                os.path.join(os.getcwd(), "backend", "data", "official", "mplads_official_sample.csv"),
+            ]
+            official_csv = next((p for p in candidate_paths if os.path.exists(p)), None)
+            if official_csv:
                 with open(official_csv, "rb") as f:
                     recs = parse_csv_content(f.read())
                 ingest_records(
@@ -845,8 +852,15 @@ def data_quality_summary(db: Db, data_source: str | None = None) -> dict:
 @app.post("/api/data/seed-official")
 def seed_official_data(db: Db) -> dict:
     """Seed official dataset from local file data/official/mplads_official_sample.csv."""
-    official_csv = os.path.join(os.path.dirname(__file__), "..", "..", "data", "official", "mplads_official_sample.csv")
-    if not os.path.exists(official_csv):
+    candidate_paths = [
+        os.path.join(os.path.dirname(__file__), "..", "..", "data", "official", "mplads_official_sample.csv"),
+        os.path.join(os.path.dirname(__file__), "..", "data", "official", "mplads_official_sample.csv"),
+        os.path.join(os.path.dirname(__file__), "data", "official", "mplads_official_sample.csv"),
+        os.path.join(os.getcwd(), "data", "official", "mplads_official_sample.csv"),
+        os.path.join(os.getcwd(), "backend", "data", "official", "mplads_official_sample.csv"),
+    ]
+    official_csv = next((p for p in candidate_paths if os.path.exists(p)), None)
+    if not official_csv:
         raise HTTPException(status_code=404, detail="Official sample dataset not found on disk")
     with open(official_csv, "rb") as f:
         records = parse_csv_content(f.read())

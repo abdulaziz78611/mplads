@@ -1,9 +1,18 @@
 const getApiBase = () => {
-  if ((import.meta as any).env?.VITE_API_BASE_URL) {
-    return (import.meta as any).env.VITE_API_BASE_URL
+  const envUrl = (import.meta as any).env?.VITE_API_BASE_URL
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname || 'localhost'
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1'
+    if (isLocalhost) {
+      return envUrl || `http://${hostname}:8000/api`
+    }
+    // On production domains (e.g. Vercel), if envUrl is set to a real remote HTTPS url use it, otherwise use same-origin /api
+    if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+      return envUrl
+    }
+    return '/api'
   }
-  const hostname = typeof window !== 'undefined' ? (window.location.hostname || 'localhost') : 'localhost'
-  return `http://${hostname}:8000/api`
+  return envUrl || 'http://localhost:8000/api'
 }
 const API_BASE = getApiBase()
 
